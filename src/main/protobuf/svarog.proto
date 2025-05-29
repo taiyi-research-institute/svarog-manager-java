@@ -1,0 +1,130 @@
+syntax = "proto3";
+package svarog;
+option java_package = "com.cregis.svarog.pb";
+
+service MpcPeer {
+    rpc NewSession(SessionConfig) returns (SessionId);
+    rpc Keygen(ParamsKeygen) returns (KeyTag);
+    rpc KeygenMnem(ParamsKeygenMnem) returns (KeyTag);
+    rpc Sign(ParamsSign) returns (VecSignature);
+    rpc Reshare(ParamsReshare) returns (KeyTag);
+    rpc Ping(Void) returns (EchoMessage);
+}
+
+enum Curve {
+    secp256k1 = 0;
+    ed25519 = 1;
+    // ed25519_ristretto = 2;
+}
+
+enum Scheme {
+    ElGamal = 0; // ECDSA
+    Schnorr = 1; // EdDSA
+}
+
+message Algorithm {
+    Curve curve = 1;
+    Scheme scheme = 2;
+}
+
+message SessionConfig {
+    Algorithm algorithm = 1;
+    string sesman_url = 2;
+    string session_id = 3;
+    uint64 threshold = 4;
+    map<string, Department> players = 5;
+    map<string, Department> players_reshared = 6;
+}
+
+message Department {
+    string name = 1;
+    uint64 threshold = 2;
+    map<string, bool> players = 3;
+}
+
+message SessionId {
+    string value = 1;
+}
+
+message ParamsKeygen {
+    string sesman_url = 1;
+    string session_id = 2;
+    string member_name = 3;
+}
+
+message Mnemonic {
+    string words = 1;
+    string password = 2;
+}
+
+message ParamsKeygenMnem {
+    string sesman_url = 1;
+    string session_id = 2;
+    string member_name = 3;
+    optional Mnemonic mnemonic = 4;
+}
+
+message KeyTag {
+    string key_id = 1;
+    string xpub = 2;
+}
+
+message ParamsSign {
+    string sesman_url = 1;
+    string session_id = 2;
+    string key_id = 3;
+    string member_name = 4;
+    repeated SignTask tasks = 6;
+}
+
+message SignTask {
+    string dpath = 1;
+    bytes msg = 2;
+    bytes mkroot = 3;
+}
+
+message VecSignature {
+    repeated Signature values = 1;
+}
+
+message Signature {
+    bytes r = 1;
+    bytes s = 2;
+    uint32 v = 3;
+    Algorithm algo = 4;
+    bytes pk = 5;
+}
+
+message ParamsReshare {
+    string sesman_url = 1;
+    string session_id = 2;
+    string member_name = 3;
+    string key_id = 4;
+}
+
+service MpcSessionManager {
+    rpc NewSession(SessionConfig) returns (SessionId);
+    rpc GetSessionConfig(SessionId) returns (SessionConfig);
+    rpc Inbox(VecMessage) returns (Void);
+    rpc Outbox(VecMessage) returns (VecMessage);
+    rpc Ping(Void) returns (EchoMessage);
+}
+
+message Message {
+    string session_id = 1;
+    string topic = 2;
+    uint64 src = 3;
+    uint64 dst = 4;
+    uint64 seq = 5;
+    optional bytes obj = 6;
+}
+
+message VecMessage {
+    repeated Message values = 1;
+}
+
+message EchoMessage {
+    string value =  1;
+}
+
+message Void {}
