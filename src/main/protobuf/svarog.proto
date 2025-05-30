@@ -3,7 +3,7 @@ package svarog;
 option java_package = "com.cregis.svarog.pb";
 
 service MpcSessionManager {
-    rpc NewSession(SessionConfig) returns (SessionId);
+    rpc NewSession(SessionConfig) returns (SessionConfig);
     rpc GetSessionConfig(SessionId) returns (SessionConfig);
     rpc Inbox(VecMessage) returns (Void);
     rpc Outbox(VecMessage) returns (VecMessage);
@@ -11,7 +11,6 @@ service MpcSessionManager {
 }
 
 message SessionConfig {
-    string sesman_url = 2;
     string session_id = 3;
     uint64 threshold = 4;
     map<string, bool> players = 5;

@@ -32,7 +32,7 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
     }
 
     @Override
-    public void newSession(SessionConfig req, StreamObserver<SessionId> resp_ob) {
+    public void newSession(SessionConfig req, StreamObserver<SessionConfig> resp_ob) {
         // TODO Auto-generated method stub
         super.newSession(req, resp_ob);
     }

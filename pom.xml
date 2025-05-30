@@ -18,6 +18,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.12.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
             <version>4.31.1</version>
@@ -115,7 +121,8 @@
                     <execution>
                         <goals>
                             <goal>generate</goal>
-                            <goal>generate-test</goal>
+                            <!-- 不要加下面这一项, mvn test会报错 -->
+                            <!-- <goal>generate-test</goal> -->
                         </goals>
                     </execution>
                 </executions>
