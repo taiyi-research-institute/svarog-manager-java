@@ -1,6 +1,8 @@
 package com.cregis.svarog;
 
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.logging.Logger;
 
@@ -11,46 +13,27 @@ import com.cregis.svarog.pb.Svarog.SessionConfig;
 import com.cregis.svarog.pb.Svarog.SessionId;
 import com.cregis.svarog.pb.Svarog.VecMessage;
 import com.cregis.svarog.pb.Svarog.Void;
-import com.cregis.svarog.utils.PrimaryKey;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.f4b6a3.uuid.UuidCreator;
 import com.google.protobuf.ByteString;
-
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
-// 在vscode里如何生成java的方法存根?
-// (1') 单击并悬浮在类名上.
-// (2') 按键 "Ctrl+.", 这会呼出一个菜单.
-// (3') 单击菜单中的 "Override/implement Methods...",
-//  这会弹出一个悬浮窗口供我选择函数名.
-// (4') 选择要实现的方法, 确认.
 public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
-	private ConcurrentSkipListMap<PrimaryKey, Object> db = new ConcurrentSkipListMap<>();
+	public static final long EXPIRE_SEC = 300;
+	private Cache<String, Object> db;
 	private static final Logger log = Logger.getLogger(MpcSessionManagerServer.class.getName());
 
-	public void recycle() {
-		while (true) {
-			while (db.size() > 0) {
-				var key = db.firstKey();
-				if (key.isExpired()) {
-					db.remove(key); // 删除过期条目
-				} else {
-					break; // 碰到第一个没过期, 那么之后的的都没过期.
-				}
-			}
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				log.warning("recycle()线程的睡眠被中断");
-			}
-		}
+	public MpcSessionManagerServerImpl() {
+		db = Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(EXPIRE_SEC)).build();
 	}
 
 	@Override
 	public void newSession(SessionConfig req, StreamObserver<SessionConfig> resp_ob) {
 		var sid = UuidCreator.getTimeOrderedEpoch().toString().replace("-", "");
 		var resp = SessionConfig.newBuilder(req).setSessionId(sid).build();
-		var key = new PrimaryKey(sid, "session config", 0, 0, 0);
+		var key = Utils.primaryKey(sid, "sesconf", 0, 0, 0);
 		db.put(key, resp);
 		resp_ob.onNext(resp);
 		resp_ob.onCompleted();
@@ -59,16 +42,10 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 	@Override
 	public void getSessionConfig(SessionId req, StreamObserver<SessionConfig> resp_ob) {
 		var sid = req.getValue();
-		PrimaryKey key = null;
-		try {
-			key = new PrimaryKey(sid, "session config", 0, 0, 0);
-		} catch (AssertionError e) {
-			resp_ob.onError(Status.INVALID_ARGUMENT.withDescription(String.format("会话ID格式不正确")).asRuntimeException());
-			return;
-		}
-		SessionConfig resp = (SessionConfig) db.get(key);
+		var key = Utils.primaryKey(sid, "sesconf", 0, 0, 0);
+		SessionConfig resp = (SessionConfig) db.getIfPresent(key);
 		if (resp == null) {
-			resp_ob.onError(Status.INVALID_ARGUMENT.withDescription(String.format("会话ID不存在")).asRuntimeException());
+			resp_ob.onError(Status.NOT_FOUND.withDescription(String.format("会话ID不存在")).asRuntimeException());
 			return;
 		}
 		resp_ob.onNext(resp);
@@ -78,16 +55,9 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 	@Override
 	public void inbox(VecMessage req, StreamObserver<Void> resp_ob) {
 		var msgs = req.getValuesList();
-		var commit = new ConcurrentSkipListMap<PrimaryKey, Object>();
+		var commit = new HashMap<String, Object>();
 		for (var msg : msgs) {
-			PrimaryKey key = null;
-			try {
-				key = new PrimaryKey(msg.getSessionId(), msg.getTopic(), msg.getSrc(), msg.getDst(), msg.getSeq());
-			} catch (AssertionError e) {
-				resp_ob.onError(
-						Status.INVALID_ARGUMENT.withDescription(String.format("会话ID格式不正确")).asRuntimeException());
-				return;
-			}
+			String key = Utils.primaryKey(msg.getSessionId(), msg.getTopic(), msg.getSrc(), msg.getDst(), msg.getSeq());
 			commit.put(key, msg.getObj());
 		}
 		db.putAll(commit);
@@ -100,26 +70,20 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		var indices = req.getValuesList();
 		var msgs = new ArrayList<Message>();
 		for (var idx : indices) {
-			PrimaryKey key = null;
-			try {
-				key = new PrimaryKey(idx.getSessionId(), idx.getTopic(), idx.getSrc(), idx.getDst(), idx.getSeq());
-			} catch (AssertionError e) {
-				resp_ob.onError(
-						Status.INVALID_ARGUMENT.withDescription(String.format("会话ID格式不正确")).asRuntimeException());
-				return;
-			}
-			ByteString val = (ByteString) db.get(key);
+			String key = Utils.primaryKey(idx.getSessionId(), idx.getTopic(), idx.getSrc(), idx.getDst(), idx.getSeq());
+			ByteString val = (ByteString) db.getIfPresent(key);
+			var ddl = System.currentTimeMillis() + EXPIRE_SEC * 1000;
 			while (val == null) {
-				if (key.isExpired()) {
+				if (System.currentTimeMillis() >= ddl) {
 					break;
 				} else {
 					try {
-						Thread.sleep(500);
+						Thread.sleep(250);
 					} catch (InterruptedException e) {
 						resp_ob.onError(Status.ABORTED.asRuntimeException());
 						return;
 					}
-					val = (ByteString) db.get(key);
+					val = (ByteString) db.getIfPresent(key);
 					break;
 				}
 			}

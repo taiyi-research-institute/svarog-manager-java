@@ -54,7 +54,7 @@
             <version>6.1.1</version>
         </dependency>
         <dependency>
-            <!-- blake2b, blake2s -->
+            <!-- 提供blake2b, blake2s哈希函数 -->
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
             <version>1.80</version>
@@ -64,7 +64,11 @@
             <artifactId>commons-codec</artifactId>
             <version>1.18.0</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>3.2.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -87,7 +91,7 @@
                 <version>2.44.5</version>
                 <configuration>
                     <java>
-                        <eclipse/>
+                        <eclipse />
                     </java>
                 </configuration>
             </plugin>

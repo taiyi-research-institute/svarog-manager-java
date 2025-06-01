@@ -27,13 +27,6 @@ public class MpcSessionManagerServer {
 	}
 
 	public void start() throws IOException {
-		var daemon = new Thread() {
-			@Override
-			public void run() {
-				server_impl.recycle();
-			}
-		};
-		daemon.start();
 		server_object.start();
 		logger.info("SvarogManager已启动, 监听端口: " + this.port);
 		var shutdown_hook = new Thread(() -> {

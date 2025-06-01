@@ -4,24 +4,48 @@ import com.cregis.svarog.pb.MpcSessionManagerGrpc;
 import com.cregis.svarog.pb.MpcSessionManagerGrpc.MpcSessionManagerBlockingStub;
 import com.cregis.svarog.pb.Svarog.SessionConfig;
 import com.cregis.svarog.pb.Svarog.SessionId;
+import com.cregis.svarog.pb.Svarog.Void;
+
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
+
+import java.time.Duration;
+import java.util.Map;
 import java.util.logging.Logger;
 
+/**
+ * 该客户端仅用于测试服务端的连通性. rust版的客户端能够批量收发mpc消息. 该客户端不具备前述能力. 这是因为, 既然没有java版的算法,
+ * 那就不必实现完整的客户端.
+ */
 public class MpcSessionManagerClient {
 	private final MpcSessionManagerBlockingStub stub;
-	private static final Logger logger = Logger.getLogger(MpcSessionManagerClient.class.getName());
 
 	public MpcSessionManagerClient(String hostport) {
 		ManagedChannel ch = Grpc.newChannelBuilder(hostport, InsecureChannelCredentials.create()).build();
-		this.stub = MpcSessionManagerGrpc.newBlockingStub(ch);
+		this.stub = MpcSessionManagerGrpc.newBlockingStub(ch).withCompression("gzip")
+				.withDeadlineAfter(Duration.ofSeconds(MpcSessionManagerServerImpl.EXPIRE_SEC));
 	}
 
-	public SessionConfig getSessionConfig(String sid) throws Exception {
-		// TODO
-		var req = SessionId.newBuilder().setValue(sid).build();
-		SessionConfig resp = this.stub.getSessionConfig(req);
-		return resp;
+	public SessionConfig newSession(long thres, Map<String, Boolean> players, Map<String, Boolean> players_reshared)
+			throws io.grpc.StatusRuntimeException {
+		var req = SessionConfig.newBuilder().putAllPlayers(players).putAllPlayersReshared(players_reshared)
+				.setThreshold(thres).build();
+		var cfg = this.stub.newSession(req);
+		return cfg;
+	}
+
+	public SessionConfig getSessionConfig(String session_id) throws io.grpc.StatusRuntimeException {
+		var req = SessionId.newBuilder().setValue(session_id).build();
+		var cfg = this.stub.getSessionConfig(req);
+		return cfg;
+	}
+
+	public String ping() throws io.grpc.StatusRuntimeException {
+		var req = Void.newBuilder().build();
+		var echo = this.stub.ping(req);
+
+		// 不要被名字误导. getValue并不是一个通用的函数名, 而是因为在proto文件里有一个名为value的字段.
+		return echo.getValue();
 	}
 }
