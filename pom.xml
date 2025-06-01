@@ -54,6 +54,7 @@
             <version>6.1.1</version>
         </dependency>
         <dependency>
+            <!-- blake2b, blake2s -->
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
             <version>1.80</version>
@@ -86,7 +87,7 @@
                 <version>2.44.5</version>
                 <configuration>
                     <java>
-                        <Eclipse />
+                        <eclipse/>
                     </java>
                 </configuration>
             </plugin>
