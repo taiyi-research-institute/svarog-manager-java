@@ -65,9 +65,22 @@
             <version>1.18.0</version>
         </dependency>
         <dependency>
+            <!-- 提供工业级内存kv方案 -->
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <version>3.2.0</version>
+        </dependency>
+        <dependency>
+            <!-- 提供cbor二进制编码(序列化)方案 -->
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-cbor</artifactId>
+            <version>2.19.0</version>
+        </dependency>
+        <dependency>
+            <!-- 语法黑魔法 -->
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.17.0</version>
         </dependency>
     </dependencies>
 

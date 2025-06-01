@@ -21,12 +21,11 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 
 public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
-	public static final long EXPIRE_SEC = 300;
 	private Cache<String, Object> db;
 	private static final Logger log = Logger.getLogger(MpcSessionManagerServer.class.getName());
 
 	public MpcSessionManagerServerImpl() {
-		db = Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(EXPIRE_SEC)).build();
+		db = Caffeine.newBuilder().expireAfterWrite(Duration.ofSeconds(Consts.EXPIRE_SEC)).build();
 	}
 
 	@Override
@@ -72,7 +71,7 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		for (var idx : indices) {
 			String key = Utils.primaryKey(idx.getSessionId(), idx.getTopic(), idx.getSrc(), idx.getDst(), idx.getSeq());
 			ByteString val = (ByteString) db.getIfPresent(key);
-			var ddl = System.currentTimeMillis() + EXPIRE_SEC * 1000;
+			var ddl = System.currentTimeMillis() + Consts.EXPIRE_SEC * 1000;
 			while (val == null) {
 				if (System.currentTimeMillis() >= ddl) {
 					break;
