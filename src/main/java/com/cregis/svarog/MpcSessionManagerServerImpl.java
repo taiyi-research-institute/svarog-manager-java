@@ -3,7 +3,6 @@ package com.cregis.svarog;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.logging.Logger;
 
 import com.cregis.svarog.pb.MpcSessionManagerGrpc.MpcSessionManagerImplBase;
@@ -56,8 +55,7 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		var msgs = req.getValuesList();
 		var commit = new HashMap<String, Object>();
 		for (var msg : msgs) {
-			String key = Utils.primaryKey(msg.getSessionId(), msg.getTopic(), msg.getSrc(), msg.getDst(), msg.getSeq());
-			commit.put(key, msg.getObj());
+			commit.put(msg.getKey(), msg.getObj());
 		}
 		db.putAll(commit);
 		resp_ob.onNext(Void.newBuilder().build());
@@ -69,8 +67,7 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		var indices = req.getValuesList();
 		var msgs = new ArrayList<Message>();
 		for (var idx : indices) {
-			String key = Utils.primaryKey(idx.getSessionId(), idx.getTopic(), idx.getSrc(), idx.getDst(), idx.getSeq());
-			ByteString val = (ByteString) db.getIfPresent(key);
+			ByteString val = (ByteString) db.getIfPresent(idx.getKey());
 			var ddl = System.currentTimeMillis() + Consts.EXPIRE_SEC * 1000;
 			while (val == null) {
 				if (System.currentTimeMillis() >= ddl) {
@@ -82,14 +79,13 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 						resp_ob.onError(Status.ABORTED.asRuntimeException());
 						return;
 					}
-					val = (ByteString) db.getIfPresent(key);
+					val = (ByteString) db.getIfPresent(idx.getKey());
 					break;
 				}
 			}
 			if (val == null) {
 				resp_ob.onError(Status.DEADLINE_EXCEEDED
-						.withDescription(String.format("未在合理时间内等到对方发送消息, 消息索引: ('%s', '%s', %d, %d, %d).",
-								idx.getSessionId(), idx.getTopic(), idx.getSrc(), idx.getDst(), idx.getSeq()))
+						.withDescription(String.format("未在合理时间内等到对方发送消息, 消息索引: %s.", idx.getKey()))
 						.asRuntimeException());
 			}
 			msgs.add(Message.newBuilder(idx).setObj(val).build());

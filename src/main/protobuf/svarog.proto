@@ -22,12 +22,8 @@ message SessionId {
 }
 
 message Message {
-    string session_id = 1;
-    string topic = 2;
-    uint64 src = 3;
-    uint64 dst = 4;
-    uint64 seq = 5;
-    optional bytes obj = 6;
+    string key = 1;
+    optional bytes obj = 2;
 }
 
 message VecMessage {
