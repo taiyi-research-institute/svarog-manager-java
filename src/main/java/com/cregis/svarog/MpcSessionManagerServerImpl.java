@@ -12,12 +12,15 @@ import com.cregis.svarog.pb.Svarog.SessionConfig;
 import com.cregis.svarog.pb.Svarog.SessionId;
 import com.cregis.svarog.pb.Svarog.VecMessage;
 import com.cregis.svarog.pb.Svarog.Void;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.f4b6a3.uuid.UuidCreator;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+
+// 本打算用 jdk 自带的 `ConcurrentSkipListMap`, 但测试时发现其经常无法读出刚刚添加的 (K,V).
+// 所以换成 `Caffeine`, 据 GPT-4.1 说是广为使用的工业级库.
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 	private Cache<String, Object> db;
