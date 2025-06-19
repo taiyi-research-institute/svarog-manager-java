@@ -35,7 +35,7 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		var sid = UuidCreator.getTimeOrderedEpoch().toString().replace("-", "");
 		var resp = SessionId.newBuilder().setValue(sid).build();
 		var key = Utils.primaryKey(sid, "sesconf", 0, 0, 0);
-		db.put(key, resp);
+		db.put(key, req);
 		resp_ob.onNext(resp);
 		resp_ob.onCompleted();
 	}
@@ -56,11 +56,10 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 	@Override
 	public void inbox(VecMessage req, StreamObserver<Void> resp_ob) {
 		var msgs = req.getValuesList();
-		var commit = new HashMap<String, Object>();
 		for (var msg : msgs) {
-			commit.put(msg.getTopic(), msg.getObj());
+			var key = Utils.primaryKey(msg.getSessionId(), msg.getTopic(), msg.getSrc(), msg.getDst(), msg.getSeq());
+			db.put(key, msg.getObj());
 		}
-		db.putAll(commit);
 		resp_ob.onNext(Void.newBuilder().build());
 		resp_ob.onCompleted();
 	}
@@ -70,11 +69,15 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		var indices = req.getValuesList();
 		var msgs = new ArrayList<Message>();
 		for (var idx : indices) {
-			ByteString val = (ByteString) db.getIfPresent(idx.getTopic());
+			var key = Utils.primaryKey(idx.getSessionId(), idx.getTopic(), idx.getSrc(), idx.getDst(), idx.getSeq());
+			ByteString val = (ByteString) db.getIfPresent(key);
 			var ddl = System.currentTimeMillis() + Consts.EXPIRE_SEC * 1000;
 			while (val == null) {
 				if (System.currentTimeMillis() >= ddl) {
-					break;
+					resp_ob.onError(Status.DEADLINE_EXCEEDED
+							.withDescription(String.format("未在合理时间内等到对方发送消息, 消息索引: %s.", key))
+							.asRuntimeException());
+					return;
 				} else {
 					try {
 						Thread.sleep(250);
@@ -82,14 +85,8 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 						resp_ob.onError(Status.ABORTED.asRuntimeException());
 						return;
 					}
-					val = (ByteString) db.getIfPresent(idx.getTopic());
-					break;
+					val = (ByteString) db.getIfPresent(key);
 				}
-			}
-			if (val == null) {
-				resp_ob.onError(Status.DEADLINE_EXCEEDED
-						.withDescription(String.format("未在合理时间内等到对方发送消息, 消息索引: %s.", idx.getTopic()))
-						.asRuntimeException());
 			}
 			msgs.add(Message.newBuilder(idx).setObj(val).build());
 		}

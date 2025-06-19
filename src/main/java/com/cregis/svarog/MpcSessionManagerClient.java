@@ -117,17 +117,17 @@ public class MpcSessionManagerClient {
 		var resp_msgs = _resp_msgs.getValuesList();
 
 		for (var msg : resp_msgs) {
-			var k = msg.getTopic();
+			var key = Utils.primaryKey(msg.getSessionId(), msg.getTopic(), msg.getSrc(), msg.getDst(), msg.getSeq());
 			var buf = msg.getObj().toByteArray();
-			var dst = require_buffer.get(k);
-			assert dst != null : String.format("客户端并未请求却收到了消息`%s`", k);
+			var dst = require_buffer.get(key);
+			assert dst != null : String.format("客户端并未请求却收到了消息`%s`", key);
 
 			var cbor = new ObjectMapper(new CBORFactory());
 			Object src = null;
 			try {
 				src = cbor.readValue(buf, dst.getClass());
 			} catch (IOException e) {
-				throw new IOException(String.format("消息`%s`解码失败", k), e);
+				throw new IOException(String.format("消息`%s`解码失败", key), e);
 			}
 
 			Utils.copyFields(src, dst);

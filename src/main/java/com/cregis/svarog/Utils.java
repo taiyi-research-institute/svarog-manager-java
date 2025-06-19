@@ -21,6 +21,10 @@ public class Utils {
 		return Hex.encodeHexString(ha.digest());
 	}
 
+	public static String pkReadable(String sid, String topic, long src, long dst, long seq) {
+		return String.format("%s, %s, %d, %d, %d", sid, topic, src, dst, seq);
+	}
+
 	public static void copyFields(Object src, Object dst) {
 		for (var field : FieldUtils.getAllFieldsList(src.getClass())) {
 			field.setAccessible(true);
