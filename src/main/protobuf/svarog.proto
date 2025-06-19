@@ -3,7 +3,7 @@ package svarog;
 option java_package = "com.cregis.svarog.pb";
 
 service MpcSessionManager {
-    rpc NewSession(SessionConfig) returns (SessionConfig);
+    rpc NewSession(SessionConfig) returns (SessionId);
     rpc GetSessionConfig(SessionId) returns (SessionConfig);
     rpc Inbox(VecMessage) returns (Void);
     rpc Outbox(VecMessage) returns (VecMessage);
@@ -11,6 +11,7 @@ service MpcSessionManager {
 }
 
 message SessionConfig {
+    string sesman_url = 2;
     string session_id = 3;
     uint64 threshold = 4;
     map<string, bool> players = 5;
@@ -21,9 +22,14 @@ message SessionId {
     string value = 1;
 }
 
+// 主键看起来分成5个部分, 实际上只有topic字段有用.
 message Message {
-    string key = 1;
-    optional bytes obj = 2;
+    string session_id = 1;
+    string topic = 2;
+    uint64 src = 3;
+    uint64 dst = 4;
+    uint64 seq = 5;
+    optional bytes obj = 6;
 }
 
 message VecMessage {

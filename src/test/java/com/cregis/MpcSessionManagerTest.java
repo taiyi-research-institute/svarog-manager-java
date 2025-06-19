@@ -55,12 +55,11 @@ public class MpcSessionManagerTest {
 
 		// 模拟客户端调用服务器.
 		var client = new MpcSessionManagerClient("127.0.0.1:65530");
-		var cfg = client.grpcNewSession(0, new HashMap<>(), new HashMap<>());
-		var sid = cfg.getSessionId();
+		var sid = client.grpcNewSession(0, new HashMap<>(), new HashMap<>());
 		logger.info(sid);
 		for (int i = 1;; i++) {
 			try {
-				cfg = client.grpcGetSessionConfig(sid);
+				var cfg = client.grpcGetSessionConfig(sid);
 				logger.info("会话还在, " + i);
 			} catch (io.grpc.StatusRuntimeException e) {
 				logger.info("会话不在了, " + i);

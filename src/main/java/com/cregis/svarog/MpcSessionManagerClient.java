@@ -39,12 +39,12 @@ public class MpcSessionManagerClient {
 		require_buffer = new HashMap<>();
 	}
 
-	public SessionConfig grpcNewSession(long thres, Map<String, Boolean> players, Map<String, Boolean> players_reshared)
+	public String grpcNewSession(long thres, Map<String, Boolean> players, Map<String, Boolean> players_reshared)
 			throws io.grpc.StatusRuntimeException {
 		var req = SessionConfig.newBuilder().putAllPlayers(players).putAllPlayersReshared(players_reshared)
 				.setThreshold(thres).build();
-		var cfg = this.stub.newSession(req);
-		return cfg;
+		var sid = this.stub.newSession(req);
+		return sid.getValue();
 	}
 
 	public SessionConfig grpcGetSessionConfig(String session_id) throws io.grpc.StatusRuntimeException {
@@ -101,7 +101,7 @@ public class MpcSessionManagerClient {
 		var msgs_builder = VecMessage.newBuilder();
 		for (var k : provide_buffer.keySet()) {
 			var v = provide_buffer.get(k);
-			var msg = Message.newBuilder().setKey(k).setObj(v).build();
+			var msg = Message.newBuilder().setTopic(k).setObj(v).build();
 			msgs_builder.addValues(msg);
 		}
 		var msgs = msgs_builder.build();
@@ -109,7 +109,7 @@ public class MpcSessionManagerClient {
 
 		var idxs_builder = VecMessage.newBuilder();
 		for (var k : require_buffer.keySet()) {
-			var idx = Message.newBuilder().setKey(k).build();
+			var idx = Message.newBuilder().setTopic(k).build();
 			idxs_builder.addValues(idx);
 		}
 		var idxs = idxs_builder.build();
@@ -117,7 +117,7 @@ public class MpcSessionManagerClient {
 		var resp_msgs = _resp_msgs.getValuesList();
 
 		for (var msg : resp_msgs) {
-			var k = msg.getKey();
+			var k = msg.getTopic();
 			var buf = msg.getObj().toByteArray();
 			var dst = require_buffer.get(k);
 			assert dst != null : String.format("客户端并未请求却收到了消息`%s`", k);

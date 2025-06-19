@@ -31,9 +31,9 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 	}
 
 	@Override
-	public void newSession(SessionConfig req, StreamObserver<SessionConfig> resp_ob) {
+	public void newSession(SessionConfig req, StreamObserver<SessionId> resp_ob) {
 		var sid = UuidCreator.getTimeOrderedEpoch().toString().replace("-", "");
-		var resp = SessionConfig.newBuilder(req).setSessionId(sid).build();
+		var resp = SessionId.newBuilder().setValue(sid).build();
 		var key = Utils.primaryKey(sid, "sesconf", 0, 0, 0);
 		db.put(key, resp);
 		resp_ob.onNext(resp);
@@ -58,7 +58,7 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		var msgs = req.getValuesList();
 		var commit = new HashMap<String, Object>();
 		for (var msg : msgs) {
-			commit.put(msg.getKey(), msg.getObj());
+			commit.put(msg.getTopic(), msg.getObj());
 		}
 		db.putAll(commit);
 		resp_ob.onNext(Void.newBuilder().build());
@@ -70,7 +70,7 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 		var indices = req.getValuesList();
 		var msgs = new ArrayList<Message>();
 		for (var idx : indices) {
-			ByteString val = (ByteString) db.getIfPresent(idx.getKey());
+			ByteString val = (ByteString) db.getIfPresent(idx.getTopic());
 			var ddl = System.currentTimeMillis() + Consts.EXPIRE_SEC * 1000;
 			while (val == null) {
 				if (System.currentTimeMillis() >= ddl) {
@@ -82,13 +82,13 @@ public class MpcSessionManagerServerImpl extends MpcSessionManagerImplBase {
 						resp_ob.onError(Status.ABORTED.asRuntimeException());
 						return;
 					}
-					val = (ByteString) db.getIfPresent(idx.getKey());
+					val = (ByteString) db.getIfPresent(idx.getTopic());
 					break;
 				}
 			}
 			if (val == null) {
 				resp_ob.onError(Status.DEADLINE_EXCEEDED
-						.withDescription(String.format("未在合理时间内等到对方发送消息, 消息索引: %s.", idx.getKey()))
+						.withDescription(String.format("未在合理时间内等到对方发送消息, 消息索引: %s.", idx.getTopic()))
 						.asRuntimeException());
 			}
 			msgs.add(Message.newBuilder(idx).setObj(val).build());
