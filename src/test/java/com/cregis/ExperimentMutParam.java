@@ -6,13 +6,13 @@ import java.util.logging.Logger;
 
 import org.junit.jupiter.api.Test;
 
-import com.cregis.svarog.MpcSessionManagerClient;
+import com.cregis.svarog.MpcSessionManagerClientImpl;
 import com.cregis.svarog.Utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
 
 public class ExperimentMutParam {
-	private static final Logger logger = Logger.getLogger(MpcSessionManagerClient.class.getName());
+	private static final Logger logger = Logger.getLogger(MpcSessionManagerClientImpl.class.getName());
 
 	@Test
 	public void testMutableParameter() {

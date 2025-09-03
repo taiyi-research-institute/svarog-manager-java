@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 public class MpcSessionManagerTest {
-	private static final Logger logger = Logger.getLogger(MpcSessionManagerClient.class.getName());
+	private static final Logger logger = Logger.getLogger(MpcSessionManagerClientImpl.class.getName());
 
 	public void startServer() {
 		// 启动服务器线程.
@@ -43,7 +43,7 @@ public class MpcSessionManagerTest {
 
 		// 模拟客户端调用服务器.
 		assertDoesNotThrow(() -> {
-			var client = new MpcSessionManagerClient("127.0.0.1:65530");
+			var client = new MpcSessionManagerClientImpl("127.0.0.1:65530");
 			var ping = client.ping();
 			logger.info(ping);
 		});
@@ -54,7 +54,7 @@ public class MpcSessionManagerTest {
 		startServer();
 
 		// 模拟客户端调用服务器.
-		var client = new MpcSessionManagerClient("127.0.0.1:65530");
+		var client = new MpcSessionManagerClientImpl("127.0.0.1:65530");
 		var sid = client.grpcNewSession(0, new HashMap<>(), new HashMap<>());
 		logger.info(sid);
 		for (int i = 1;; i++) {
@@ -77,19 +77,19 @@ public class MpcSessionManagerTest {
 	public void testCommunication() {
 		startServer();
 
-		var cl = new MpcSessionManagerClient("127.0.0.1:65530");
+		var cl = new MpcSessionManagerClientImpl("127.0.0.1:65530");
 
 		// 测试Exchange能否修改vec中的元素.
 		List<Curve> vec = new ArrayList<>();
 		for (int i = 0; i < 5; i++) {
-			cl.mpcProvide(new Curve(i * 2, 1 + i * 2), "通讯测试", "修改vec元素", 0, i, 0);
+			cl.register_send(new Curve(i * 2, 1 + i * 2), "通讯测试", "修改vec元素", 0, i, 0);
 			var recv = new Curve();
 			vec.add(recv);
 
-			cl.mpcRequire(recv, "通讯测试", "修改vec元素", 0, i, 0);
+			cl.register_recv(recv, "通讯测试", "修改vec元素", 0, i, 0);
 		}
 		assertDoesNotThrow(() -> {
-			cl.mpcExchange();
+			cl.exchange();
 		});
 
 		// 测试收到的vec和发出的是否一致.
@@ -102,15 +102,15 @@ public class MpcSessionManagerTest {
 		// 测试Exchange能否修改Map元素.
 		Map<String, Curve> map = new HashMap<>();
 		for (int i = 0; i < 5; i++) {
-			var key = cl.mpcProvide(new Curve(i * 2, 1 + i * 2), "通讯测试", "修改map元素", 0, i, 0);
+			var key = cl.register_send(new Curve(i * 2, 1 + i * 2), "通讯测试", "修改map元素", 0, i, 0);
 
 			var recv = new Curve();
 			map.put(key, recv);
 
-			cl.mpcRequire(recv, "通讯测试", "修改map元素", 0, i, 0);
+			cl.register_recv(recv, "通讯测试", "修改map元素", 0, i, 0);
 		}
 		assertDoesNotThrow(() -> {
-			cl.mpcExchange();
+			cl.exchange();
 		});
 
 		// 测试收到的map和发出的是否一致.

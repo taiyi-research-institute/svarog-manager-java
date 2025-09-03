@@ -25,13 +25,13 @@ import java.util.logging.Logger;
  * 因为 `provide_buffer` 和 `require_buffer` 线程不安全, 所以每个client应仅在一个线程里使用.
  * 因为一个线程代表0~1个MPC参与方, 所以这种设计已经够用了.
  */
-public class MpcSessionManagerClient {
+public class MpcSessionManagerClientImpl {
 	private final MpcSessionManagerBlockingStub stub;
 	private Map<String, ByteString> provide_buffer;
 	private Map<String, Object> require_buffer;
 	private static final Logger log = Logger.getLogger(MpcSessionManagerServer.class.getName());
 
-	public MpcSessionManagerClient(String hostport) {
+	public MpcSessionManagerClientImpl(String hostport) {
 		ManagedChannel ch = Grpc.newChannelBuilder(hostport, InsecureChannelCredentials.create()).build();
 		this.stub = MpcSessionManagerGrpc.newBlockingStub(ch).withCompression("gzip")
 				.withDeadlineAfter(Duration.ofSeconds(Consts.EXPIRE_SEC));
@@ -64,7 +64,7 @@ public class MpcSessionManagerClient {
 	/**
 	 * 注册将要接收的对象. 对象需正确初始化.
 	 */
-	public String mpcRequire(Object obj, String sid, String topic, long src, long dst, long seq) {
+	public String register_recv(Object obj, String sid, String topic, long src, long dst, long seq) {
 		var key = Utils.primaryKey(sid, topic, src, dst, seq);
 		require_buffer.put(key, obj);
 		return key;
@@ -73,7 +73,7 @@ public class MpcSessionManagerClient {
 	/**
 	 * 注册将要发送的对象.
 	 */
-	public String mpcProvide(Object obj, String sid, String topic, long src, long dst, long seq) {
+	public String register_send(Object obj, String sid, String topic, long src, long dst, long seq) {
 		var cbor = new ObjectMapper(new CBORFactory());
 		byte[] bytes = null;
 		try {
@@ -97,7 +97,7 @@ public class MpcSessionManagerClient {
 	 * @throws IOException
 	 *             客户端收到的消息不能解码为客户端想要的数据类型.
 	 */
-	public void mpcExchange() throws io.grpc.StatusRuntimeException, AssertionError, IOException {
+	public void exchange() throws io.grpc.StatusRuntimeException, AssertionError, IOException {
 		var msgs_builder = VecMessage.newBuilder();
 		for (var k : provide_buffer.keySet()) {
 			var v = provide_buffer.get(k);
@@ -133,10 +133,10 @@ public class MpcSessionManagerClient {
 			Utils.copyFields(src, dst);
 		}
 
-		mpcResetBuffer();
+		clear();
 	}
 
-	public void mpcResetBuffer() {
+	public void clear() {
 		provide_buffer.clear();
 		require_buffer.clear();
 	}
